@@ -1,12 +1,28 @@
 package engine
 
-type RetainKey []byte
-type RetainValue interface {
-	bool | int64 | float64 | string
+import (
+	"os"
+	"sync"
+)
+
+type Engine interface {
+	Get() (string, bool, error)
+	Set(string, string) error
+	Keys() []string
+	Del(string) error
+	Exists(string) bool
 }
 
-type Engine[T RetainValue] interface {
-	Get() (T, error)
-	Set(RetainKey, T) (bool, error)
-	Keys() ([]RetainKey, error)
+type KeyInfo struct {
+	timestamp uint32
+	position  uint32
+	totalSize uint32
+}
+
+type Store struct {
+	sync.Mutex
+	memory      map[string]KeyInfo
+	log         os.File
+	maxFileSize uint32
+	writeNextAt uint32
 }
