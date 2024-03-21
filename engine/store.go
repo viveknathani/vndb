@@ -35,14 +35,15 @@ func encodeKV(key string, value string, tombstone bool) (uint32, []byte) {
 	return currentTimestamp, data
 }
 
-func decodeKV(key string, data []byte) (bool, string) {
+func decodeKV(key string, data []byte) (bool, string, string) {
 	keySize := binary.BigEndian.Uint32(data[4:8])
 	valueSize := binary.BigEndian.Uint32(data[8:12])
 	tombstone := int8(data[12])
 	value := string(data[uint32(HEADER_SIZE)+keySize : uint32(HEADER_SIZE)+keySize+valueSize])
-	return tombstone == 1, value
+	return tombstone == 1, key, value
 }
 
+// Set sets a key-value pair.
 func (s *Store) Set(key string, value string) error {
 	s.Lock()
 	defer s.Unlock()
@@ -60,6 +61,7 @@ func (s *Store) Set(key string, value string) error {
 	return nil
 }
 
+// Get returns the value for a given key if it exists.
 func (s *Store) Get(key string) (string, bool, error) {
 	s.Lock()
 	defer s.Unlock()
@@ -77,10 +79,11 @@ func (s *Store) Get(key string) (string, bool, error) {
 	if err != nil {
 		return "", false, err
 	}
-	tombstone, value := decodeKV(key, data)
+	tombstone, key, value := decodeKV(key, data)
 	return value, tombstone, nil
 }
 
+// Keys will list all keys.
 func (s *Store) Keys() []string {
 	keys := make([]string, len(s.memory))
 	i := 0
@@ -91,6 +94,7 @@ func (s *Store) Keys() []string {
 	return keys
 }
 
+// Del deletes the key.
 func (s *Store) Del(key string) error {
 	s.Lock()
 	defer s.Unlock()
@@ -104,6 +108,7 @@ func (s *Store) Del(key string) error {
 	return nil
 }
 
+// Exists tells you if the key exists.
 func (s *Store) Exists(key string) bool {
 	s.Lock()
 	defer s.Unlock()
@@ -146,6 +151,7 @@ func (s *Store) initMemory(filePath string) {
 	}
 }
 
+// NewStore returns a new store.
 func NewStore(filePath string) *Store {
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
